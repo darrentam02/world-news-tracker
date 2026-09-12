@@ -1,6 +1,6 @@
 # World News Tracker
 
-每小時全球 + 香港 + 巿場新聞 app。Phase 1 中 —— M1 done。
+每小時全球 + 香港 + 巿場新聞 app。Phase 1 中 —— M1–M6 done。
 
 詳細 spec + decisions：見 `spec.md` / `decisions.md`(source of truth)。
 
@@ -10,16 +10,20 @@
 pnpm install
 cp .env.example .env   # 填 SUPABASE_URL / SERVICE_ROLE_KEY 等
 pnpm dev               # vite :5173 + api :5000
+pnpm quotes            # Yahoo 13 指數入 quotes 表（每小時 fetch-hourly 會自動做）
+pnpm digest-a          # 08:30 開巿簡報（無 RESEND_API_KEY = dry-run）
+pnpm digest-b          # 16:30 收巿簡報
+pnpm cleanup-pending   # 刪 50 日未確認嘅 pending 訂閱（每日 job）
 ```
 
 ## 目錄
 
 ```
-supabase/migrations/   # events / articles / subscribers / audit_log
+supabase/migrations/   # events / articles / subscribers / quotes / audit_log
 app/                   # Replit workspace（Vite frontend + Express API）
 shared/                # feeds / dedup / market / types 共用
-config/                # blacklist / feeds / market（M2 起）
-scripts/               # fetch-hourly / send-digest（M2 起）
+config/                # blacklist / feeds（M2 起）
+scripts/               # fetch-hourly / cluster / fetch-quotes / send-digest / cleanup-pending
 ```
 
 ## Milestones
@@ -27,9 +31,9 @@ scripts/               # fetch-hourly / send-digest（M2 起）
 - [x] M1 scaffold + migrations + /api/healthz
 - [x] M2 feeds + fetch-hourly
 - [x] M3 dedup cluster
-- [ ] M4 news API + frontend
-- [ ] M5 market quote
-- [ ] M6 subscribe/digest
+- [x] M4 news API + frontend
+- [x] M5 market quote
+- [x] M6 subscribe/digest
 - [ ] M7 privacy / blacklist / audit
 
 ## 私隱

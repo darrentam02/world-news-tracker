@@ -83,10 +83,23 @@ export interface MarketIndexInfo {
   group: MarketGroup;
 }
 
+export interface MarketQuoteData {
+  symbol: string;
+  price: number;
+  change: number;
+  change_pct: number;
+  quote_time: string | null;
+  fetched_at: string;
+}
+
+export interface MarketIndexWithQuote extends MarketIndexInfo {
+  quote: MarketQuoteData | null;
+}
+
 export interface MarketGroupPayload {
   group: MarketGroup;
   label: string;
-  indices: MarketIndexInfo[];
+  indices: MarketIndexWithQuote[];
 }
 
 export interface MarketResponse {

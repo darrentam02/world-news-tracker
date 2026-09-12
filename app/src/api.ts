@@ -5,6 +5,12 @@ import type {
   Region,
 } from "@world-news/shared";
 
+export interface SubscribeResult {
+  ok: boolean;
+  message?: string;
+  dev_confirm_url?: string;
+}
+
 async function get<T>(url: string): Promise<T> {
   const res = await fetch(url);
   if (!res.ok) {
@@ -27,3 +33,14 @@ export const fetchEvent = (id: string): Promise<EventTimelineResponse> =>
   get<EventTimelineResponse>(`/api/events/${id}`);
 
 export const fetchMarket = (): Promise<MarketResponse> => get<MarketResponse>("/api/market");
+
+export async function subscribe(email: string): Promise<SubscribeResult> {
+  const res = await fetch("/api/subscribe", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const body = (await res.json().catch(() => ({}))) as Partial<SubscribeResult> & { error?: string };
+  if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
+  return body as SubscribeResult;
+}

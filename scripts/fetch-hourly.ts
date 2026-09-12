@@ -8,6 +8,7 @@ import { createHash } from "node:crypto";
 import { FEEDS, type FeedSource } from "../config/feeds";
 import { isBlacklisted } from "../config/blacklist";
 import { runClustering } from "./cluster";
+import { fetchAndStoreQuotes } from "./fetch-quotes";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -176,6 +177,13 @@ async function main(): Promise<void> {
 
   // M3：每小時 pipeline —— fetch 完即 cluster（新稿併入事件 + status sweep）
   await runClustering();
+
+  // M5：quote 每小時同 RSS 一齊 refresh（spec §3.4）；失敗獨立降級，唔影響 RSS 結果
+  try {
+    await fetchAndStoreQuotes();
+  } catch (e) {
+    console.warn(`[degrade] quotes: ${(e as Error).message}`);
+  }
 }
 
 main();

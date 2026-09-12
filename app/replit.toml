@@ -1,9 +1,14 @@
 # Replit Deployment entry — port 5000 serves /api + built frontend (app/dist)
 # 本地 dev：pnpm dev（vite :5173 + api :5000）
 #
-# 每小時 news fetch 係獨立 cron job（唔係 web server）：
-#   在 Replit UI → Deployments/Jobs → create job：command = pnpm fetch-hourly
-#   schedule = 每小時（cron 0 * * * *，HKT / UTC 皆可，script 只抓「新」文,重覆靠 raw_hash 去重）
-#   Secrets 與 web 同一份（SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY）
+# cron jobs（Replit UI → Deployments/Jobs → create job，Secrets 與 web 同一份）：
+#   1) fetch-hourly：command = pnpm fetch-hourly，schedule = 每小時（0 * * * *）
+#      做 RSS 抓取 + 去重 cluster + Yahoo 13 指數 quote，全部入 Supabase。
+#   2) digest-a：command = pnpm digest-a，schedule = 每日 08:30 HKT
+#   3) digest-b：command = pnpm digest-b，schedule = 每日 16:30 HKT
+#   4) cleanup-pending：command = pnpm cleanup-pending，schedule = 每日一次（刪 50 日未確認訂閱）
+#   Secrets 必需：SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY / RESEND_API_KEY / DIGEST_SECRET /
+#                 PUBLIC_BASE_URL / RESEND_FROM
+# 後備：GitHub Actions cron（同上面 4 個 job 一樣，Secrets 設喺 repo Actions secrets）
 [tool]
 entrypoint = ["pnpm", "start"]

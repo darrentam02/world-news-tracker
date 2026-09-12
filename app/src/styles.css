@@ -113,6 +113,77 @@ a {
   text-align: right;
 }
 
+.market-pct {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  min-width: 52px;
+  text-align: right;
+}
+
+.up {
+  color: #4ade80;
+}
+
+.down {
+  color: #f87171;
+}
+
+/* —— subscribe —— */
+.subscribe {
+  background: #151d26;
+  border: 1px solid #22313f;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 8px 0 20px;
+}
+
+.subscribe label {
+  display: block;
+  font-size: 12px;
+  color: #8b98a5;
+  margin-bottom: 8px;
+}
+
+.subscribe-row {
+  display: flex;
+  gap: 8px;
+}
+
+.subscribe-row input {
+  flex: 1;
+  background: #0f1419;
+  border: 1px solid #2f4257;
+  border-radius: 8px;
+  color: #e7e9ea;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.subscribe-row input:focus {
+  outline: none;
+  border-color: #3a5a80;
+}
+
+.subscribe-row button {
+  background: #243448;
+  color: #fff;
+  border: 1px solid #3a5a80;
+  border-radius: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.subscribe-row button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.sub-msg {
+  font-size: 12px;
+  margin: 8px 0 0;
+}
+
 /* —— cards —— */
 .feed {
   display: flex;

@@ -4,6 +4,7 @@ import { fetchNews, fetchMarket, fetchEvent } from "./api";
 import { EventCard } from "./EventCard";
 import { EventTimeline } from "./EventTimeline";
 import { MarketCard } from "./MarketCard";
+import { SubscribeBox } from "./SubscribeBox";
 import { REGION_LABELS } from "./ui";
 
 const TABS: Region[] = ["world", "hk"];
@@ -43,6 +44,8 @@ export default function App() {
         <h1>World News Tracker</h1>
         <p className="tagline">每小時全球 + 香港 + 巿場新聞</p>
       </header>
+
+      <SubscribeBox />
 
       {selected ? (
         <EventTimeline data={selected} onBack={closeEvent} />

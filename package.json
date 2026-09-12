@@ -7,7 +7,11 @@
     "build": "pnpm --filter @world-news/app build",
     "dev": "pnpm --filter @world-news/app dev",
     "fetch-hourly": "tsx scripts/fetch-hourly.ts",
-    "cluster": "tsx scripts/cluster.ts"
+    "cluster": "tsx scripts/cluster.ts",
+    "quotes": "tsx scripts/fetch-quotes.ts",
+    "digest-a": "tsx scripts/send-digest.ts --slot=a",
+    "digest-b": "tsx scripts/send-digest.ts --slot=b",
+    "cleanup-pending": "tsx scripts/cleanup-pending.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
