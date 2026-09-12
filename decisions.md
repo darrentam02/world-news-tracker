@@ -35,6 +35,9 @@
 ## D5. 事件演算法
 
 **決定：trigram Jaccard cluster；48h 無新稿 → stale；7 日 → resolved；全自動 + admin 手動 pin top 3**
+- 門檻 `SIMILARITY_THRESHOLD = 0.55`（`shared/src/dedup.ts`）；代表標題＝event 最新一篇；intra-batch 先互比再同現有 event 比。
+- incremental：只 cluster 未入 event 嘅新稿；已分配舊稿唔會重新 cluster（避免事件分裂/震盪）。
+- 實測 335 篇 → 329 個 event、8 個跨來源多稿事件（如 Yonhap 北韓導彈 3 篇 → 1 卡）。已知 false-negative：同題材但措辭差異大（如 BRICS 峰會兩標題）會分開，MVP 接受，之後可低 threshold 或加來源權重。
 - 淘汰：embedding（過重）；exact match（分唔散）；全套 merge/split admin（過度工程）。
 
 ## D6. Digest 內容

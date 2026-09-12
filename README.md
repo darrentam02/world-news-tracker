@@ -25,8 +25,8 @@ scripts/               # fetch-hourly / send-digest（M2 起）
 ## Milestones
 
 - [x] M1 scaffold + migrations + /api/healthz
-- [ ] M2 feeds + fetch-hourly
-- [ ] M3 dedup cluster
+- [x] M2 feeds + fetch-hourly
+- [x] M3 dedup cluster
 - [ ] M4 news API + frontend
 - [ ] M5 market quote
 - [ ] M6 subscribe/digest

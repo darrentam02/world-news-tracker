@@ -6,7 +6,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "build": "pnpm --filter @world-news/app build",
     "dev": "pnpm --filter @world-news/app dev",
-    "fetch-hourly": "tsx scripts/fetch-hourly.ts"
+    "fetch-hourly": "tsx scripts/fetch-hourly.ts",
+    "cluster": "tsx scripts/cluster.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

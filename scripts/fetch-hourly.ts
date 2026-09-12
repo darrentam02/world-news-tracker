@@ -7,6 +7,7 @@ import { XMLParser } from "fast-xml-parser";
 import { createHash } from "node:crypto";
 import { FEEDS, type FeedSource } from "../config/feeds";
 import { isBlacklisted } from "../config/blacklist";
+import { runClustering } from "./cluster";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -172,6 +173,9 @@ async function main(): Promise<void> {
     for (const { feed, result } of fail) console.log(`   - ${feed.id}: ${result.error}`);
     process.exitCode = 1;
   }
+
+  // M3：每小時 pipeline —— fetch 完即 cluster（新稿併入事件 + status sweep）
+  await runClustering();
 }
 
 main();

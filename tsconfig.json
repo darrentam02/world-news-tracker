@@ -14,5 +14,5 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["app/src", "app/server", "app/vite.config.ts", "shared/src"]
+  "include": ["app/src", "app/server", "app/vite.config.ts", "shared/src", "scripts", "config"]
 }
