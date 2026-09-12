@@ -67,9 +67,15 @@ export interface NewsEventCard extends EventDetail {
   latest: NewsArticleLight[];
 }
 
+export interface DegradedFeed {
+  id: string;
+  name: string;
+}
+
 export interface NewsResponse {
   region: Region | "all";
   events: NewsEventCard[];
+  degraded_feeds: DegradedFeed[];
 }
 
 export interface EventTimelineResponse {

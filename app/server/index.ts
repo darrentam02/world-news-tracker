@@ -11,6 +11,7 @@ import { privacyPageHtml } from "./privacy";
 
 dotenv.config({ path: fileURLToPath(new URL("../../.env", import.meta.url)) });
 import {
+  FEEDS,
   MARKET_INDICES,
   MARKET_GROUP_LABELS,
   marketGroupOrder,
@@ -25,6 +26,7 @@ import type {
   MarketGroup,
   MarketQuoteData,
   Region,
+  DegradedFeed,
 } from "@world-news/shared";
 
 const app = express();
@@ -89,7 +91,20 @@ app.get("/api/news", async (req, res) => {
       };
     });
 
-    const payload: NewsResponse = { region: region as NewsResponse["region"], events };
+    const payload: NewsResponse = { region: region as NewsResponse["region"], events, degraded_feeds: [] };
+
+    // spec §10：可能故障（feed_status.flagged），前端顯示仍顯示舊稿
+    if (sb) {
+      try {
+        const { data: fsRows } = await sb.from("feed_status").select("feed_id").eq("flagged", true);
+        const SOURCE_NAMES = new Map(FEEDS.map((f) => [f.id, f.name]));
+        payload.degraded_feeds = (fsRows ?? [])
+          .map((r: { feed_id: string }) => ({ id: r.feed_id, name: SOURCE_NAMES.get(r.feed_id) ?? r.feed_id }));
+      } catch {
+        /* best-effort */
+      }
+    }
+
     res.json(payload);
   } catch (e) {
     res.status(500).json({ error: (e as Error).message });

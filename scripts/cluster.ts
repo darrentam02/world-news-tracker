@@ -40,6 +40,7 @@ interface ArticleRow {
   id: string;
   source: string;
   title: string;
+  description?: string | null;
   url: string;
   fetched_at: string;
 }
@@ -53,7 +54,7 @@ async function loadEvents(): Promise<EventRow[]> {
 async function loadUnassigned(): Promise<ArticleRow[]> {
   const { data, error } = await sb
     .from("articles")
-    .select("id,source,title,url,fetched_at")
+    .select("id,source,title,description,url,fetched_at")
     .is("event_id", null)
     .order("fetched_at", { ascending: true });
   if (error) throw new Error(`load articles: ${error.message}`);
@@ -148,15 +149,15 @@ export async function runClustering(): Promise<void> {
   }
 
   for (const [eventId, m] of merged) {
-    const { error } = await sb
-      .from("events")
-      .update({
-        title: m.latest.title,
-        source_url: m.latest.url,
-        last_seen_at: m.lastSeen,
-        status: eventStatus(m.lastSeen),
-      })
-      .eq("id", eventId);
+    const patch: Record<string, unknown> = {
+      title: m.latest.title,
+      source_url: m.latest.url,
+      last_seen_at: m.lastSeen,
+      status: eventStatus(m.lastSeen),
+    };
+    // 摘要跟代表標題同一篇（RSS excerpt 暫代 LLM 繁中）；新稿冇 excerpt 就唔郁舊摘要
+    if (m.latest.description) patch.summary = m.latest.description;
+    const { error } = await sb.from("events").update(patch).eq("id", eventId);
     if (error) throw new Error(`update event ${eventId}: ${error.message}`);
     await assign(eventId, m.articleIds);
   }
@@ -165,6 +166,7 @@ export async function runClustering(): Promise<void> {
   if (fresh.size) {
     const rows = [...fresh.values()].map((n) => ({
       title: n.latest.title,
+      summary: n.latest.description ?? null,
       cluster_hash: n.cluster,
       region: n.region,
       first_seen_at: n.latest.fetched_at,

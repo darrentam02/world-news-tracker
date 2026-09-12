@@ -32,6 +32,28 @@ function sha256(s: string): string {
   return createHash("sha256").update(s).digest("hex");
 }
 
+// RSS <description> 嘅 HTML → 純文字 excerpt（短摘錄，唔係正文）
+function textFromDescription(desc: unknown): string {
+  let s: string;
+  if (typeof desc !== "string") {
+    const t = (desc as { "#text"?: string } | null)?.["#text"];
+    s = t ?? "";
+  } else {
+    s = desc;
+  }
+  s = s
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+  return s.slice(0, 1200);
+}
+
 let sbCache: any = null;
 function getSb(): any {
   if (SUPABASE_URL && SUPABASE_KEY) sbCache ??= createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -114,6 +136,7 @@ async function fetchFeed(feed: FeedSource): Promise<{ ok: boolean; count: number
         return {
           source: feed.id,
           title: i.title!.trim().slice(0, 400),
+          description: textFromDescription(i.description),
           url,
           fetched_at: new Date().toISOString(),
           raw_hash: rawHash,
@@ -160,10 +183,11 @@ async function logDegrade(feed: FeedSource, msg: string): Promise<void> {
   console.warn(`[degrade] ${feed.id}: ${msg}`);
 }
 
-// Row 對應 spec §8 articles：source · title · url · fetched_at · raw_hash
+// Row 對應 spec §8 articles：source · title · url · fetched_at · raw_hash（+ description excerpt）
 type ArticleRow = {
   source: string;
   title: string;
+  description: string;
   url: string;
   fetched_at: string;
   raw_hash: string;
@@ -192,6 +216,49 @@ async function saveArticles(feed: FeedSource, articles: ArticleRow[]): Promise<v
   }
 }
 
+// spec §10：連續 24h 0 稿 → 標「可能故障」，仍顯示舊稿
+// flagged 條件：job 仲行緊（last_attempt <2h）但 >24h 冇新稿入庫（或 fetch 連續失敗令 last_ok 過期）
+const HOUR_MS = 3_600_000;
+const STALE_MS = 24 * HOUR_MS;
+
+interface FeedResult {
+  feed: FeedSource;
+  result: { ok: boolean; count: number; error?: string };
+}
+
+async function updateFeedStatus(results: FeedResult[]): Promise<void> {
+  const sb = getSb();
+  if (!sb) return;
+  const now = Date.now();
+  const nowIso = new Date(now).toISOString();
+  const { data } = await sb
+    .from("feed_status")
+    .select("feed_id,last_attempt_at,last_ok_at,last_new_at");
+  const prev = new Map<string, { last_attempt_at?: string; last_ok_at?: string; last_new_at?: string }>(
+    (data ?? []).map((r: any) => [r.feed_id, r]),
+  );
+  for (const { feed, result } of results) {
+    const p = prev.get(feed.id) ?? {};
+    // job 存活 = 上次 run（任何 feed 有記）紀錄唔超過 2h，先避免 cron 自己停咗唔亂 flag
+    const alive =
+      p.last_attempt_at != null && now - new Date(p.last_attempt_at).getTime() < 2 * HOUR_MS;
+    const lastOk = result.ok ? nowIso : (p.last_ok_at ?? null);
+    const lastNew = result.count > 0 ? nowIso : (p.last_new_at ?? null);
+    const ref = new Date(lastNew ?? lastOk ?? nowIso).getTime();
+    const flagged = alive && now - ref >= STALE_MS;
+    const { error } = await sb.from("feed_status").upsert({
+      feed_id: feed.id,
+      last_attempt_at: nowIso,
+      last_ok_at: lastOk,
+      last_new_at: lastNew,
+      last_new_count: result.count,
+      flagged,
+      updated_at: nowIso,
+    });
+    if (error) throw new Error(`feed_status upsert ${feed.id}: ${error.message}`);
+  }
+}
+
 async function main(): Promise<void> {
   const t0 = Date.now();
 
@@ -213,6 +280,13 @@ async function main(): Promise<void> {
     console.log("以下 feed 失敗:");
     for (const { feed, result } of fail) console.log(`   - ${feed.id}: ${result.error}`);
     process.exitCode = 1;
+  }
+
+  // spec §10：每源「可能故障」flag（24h 0 稿）——失敗亦照記，單源獨立
+  try {
+    await updateFeedStatus(results);
+  } catch (e) {
+    console.warn(`[degrade] feed_status: ${(e as Error).message}`);
   }
 
   // M3：每小時 pipeline —— fetch 完即 cluster（新稿併入事件 + status sweep）

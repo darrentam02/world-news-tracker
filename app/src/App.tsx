@@ -67,6 +67,11 @@ export default function App() {
           </nav>
           {error && <p className="bad">出錯：{error}</p>}
           {loading && <p>載入中…</p>}
+          {!loading && news && news.degraded_feeds.length > 0 && (
+            <p className="degraded">
+              ⚠ 可能故障源：{news.degraded_feeds.map((d) => d.name).join("、")}（仍顯示舊稿）
+            </p>
+          )}
           {!loading && news && news.events.length === 0 && <p className="muted">暫時冇事件</p>}
           {!loading && news && (
             <section className="feed">
