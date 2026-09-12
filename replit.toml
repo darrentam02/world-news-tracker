@@ -1,0 +1,27 @@
+# World News Tracker — Replit 部署配置（spec §9：replit.toml 喺 repo root）
+# Deployments：import 呢個 GitHub repo → Deployments tab → Publish。
+#   部 app 用 [deployment] build + run；entrypoint 只係 dev editor 用。
+
+[tool]
+entrypoint = ["pnpm", "start"]
+
+[deployment]
+build = ["pnpm", "build"]          # 先 vite build（app/dist）再 start
+run = ["pnpm", "start"]            # app server（tsx server/index.ts，port $PORT=5000）
+deploymentTarget = "autoscale"     # 免費 Autoscale；要穩定可用 Reserved VM
+
+# --- Secrets（Deployments tab → Secrets）必填 -------------
+#   SUPABASE_URL                    e.g. https://xxxx.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY       service_role（永唔好用 public anon key）
+#   DIGEST_SECRET                   任意長隨機字串（/api/digest 保護）
+#   RESEND_API_KEY                  （未填 = digest 乾跑 dry-run）
+#   RESEND_FROM=World News <xxx@your-domain>
+#   PUBLIC_BASE_URL=http://localhost:5000  ← 部署後改 <https://你的孖名>.replit.app
+#      ↑ 影響 email confirm / unsubscribe / privacy 連結
+
+# --- Scheduled jobs（Deployments tab → Jobs，cron 用 UTC）-----
+#   fetch-hourly      command=pnpm fetch-hourly      schedule=0 * * * *        （每小時）
+#   digest-a          command=pnpm digest-a          schedule=30 0 * * *       （08:30 HKT）
+#   digest-b          command=pnpm digest-b          schedule=30 8 * * *       （16:30 HKT）
+#   cleanup-pending   command=pnpm cleanup-pending   schedule=0 1 * * *        （每日 09:00 HKT）
+#   Secrets 同上（Replit 唔會讀 repo 嘅 .env）。

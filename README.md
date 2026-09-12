@@ -16,6 +16,17 @@ pnpm digest-b          # 16:30 收巿簡報
 pnpm cleanup-pending   # 刪 50 日未確認嘅 pending 訂閱（每日 job）
 ```
 
+## Deploy（Replit）
+
+`replit.toml`（repo root）已設：build=`pnpm build`、run=`pnpm start`（tsx server，port 5000，serve 埋 `app/dist` 前端）。
+
+1. replit.com → **Create new Repl → Import from GitHub** → `darrentam02/world-news-tracker`
+2. **Deployments tab → Secrets** 填：`SUPABASE_URL`、`SUPABASE_SERVICE_ROLE_KEY`、`RESEND_API_KEY`、`RESEND_FROM`、`DIGEST_SECRET`、`PUBLIC_BASE_URL=https://<你個名>.replit.app`
+3. **Publish**（Autoscale 免費）→ 揀 `.replit.app` 個 subdomain
+4. **Jobs tab** 建 4 個 cron（UTC）：`fetch-hourly` `0 * * * *`、`digest-a` `30 0 * * *`（08:30 HKT）、`digest-b` `30 8 * * *`（16:30 HKT）、`cleanup-pending` `0 1 * * *`
+
+> Secrets 唔會自動由 `.env` 帶過去；改咗 secret 要重新 Publish 先生效。
+
 ## 目錄
 
 ```
