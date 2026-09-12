@@ -16,12 +16,16 @@ type DigestSlot = "a" | "b";
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error("send-digest 需要 SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY");
-  process.exit(1);
-}
+const sb = SUPABASE_URL && SUPABASE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_KEY)
+  : null;
 
-const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+function requireSupabase() {
+  if (!sb) {
+    throw new Error("send-digest 需要 SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY");
+  }
+  return sb;
+}
 
 const SOURCE_NAMES = new Map(FEEDS.map((f) => [f.id, f.name]));
 
@@ -194,7 +198,7 @@ interface QuoteRow {
 }
 
 async function loadLatestQuotes(): Promise<Map<string, MarketQuoteData>> {
-  const { data, error } = await sb
+  const { data, error } = await requireSupabase()
     .from("quotes")
     .select("symbol,price,change,change_pct,quote_time,fetched_at")
     .order("fetched_at", { ascending: false });
@@ -229,7 +233,7 @@ interface EventRowSQL {
 }
 
 async function loadEventPool(): Promise<PoolEvent[]> {
-  const { data, error } = await sb
+  const { data, error } = await requireSupabase()
     .from("events")
     .select("id,title,summary,status,region,pinned,last_seen_at,source_url,articles(source,title,url,fetched_at)")
     .order("pinned", { ascending: false })
@@ -260,7 +264,7 @@ async function loadEventPool(): Promise<PoolEvent[]> {
 }
 
 const loadSubscribers = async (): Promise<SubscriberRow[]> => {
-  const { data, error } = await sb
+  const { data, error } = await requireSupabase()
     .from("subscribers")
     .select("email,unsubscribe_token")
     .eq("status", "active");
