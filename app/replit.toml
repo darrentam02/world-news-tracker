@@ -1,4 +1,9 @@
 # Replit Deployment entry — port 5000 serves /api + built frontend (app/dist)
 # 本地 dev：pnpm dev（vite :5173 + api :5000）
+#
+# 每小時 news fetch 係獨立 cron job（唔係 web server）：
+#   在 Replit UI → Deployments/Jobs → create job：command = pnpm fetch-hourly
+#   schedule = 每小時（cron 0 * * * *，HKT / UTC 皆可，script 只抓「新」文,重覆靠 raw_hash 去重）
+#   Secrets 與 web 同一份（SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY）
 [tool]
 entrypoint = ["pnpm", "start"]
