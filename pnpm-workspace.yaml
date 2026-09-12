@@ -1,0 +1,6 @@
+packages:
+  - "app"
+  - "shared"
+
+allowBuilds:
+  esbuild: true

@@ -1,0 +1,4 @@
+# Replit Deployment entry — port 5000 serves /api + built frontend (app/dist)
+# 本地 dev：pnpm dev（vite :5173 + api :5000）
+[tool]
+entrypoint = ["pnpm", "start"]

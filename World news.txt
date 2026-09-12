@@ -1,0 +1,107 @@
+兩者其實唔係二選一——佢哋係兩種工作模式，而「grill me」個價值在於你 spec 未清（你頭先個 news app 就係好例子：每小時定每日？事件點定義？額度爆咗點？）。我會咁分工：
+- **opencode（terminal agent）**：做 grill-me、scaffold、headless 跑 pipeline 邏輯、`opencode run` 可以寫入 CI 式指令。開源、可 script、唔綁 editor。
+- **Cursor**：做 UI 微調、睇 diff、大 refactor、地圖/前端 component 呢啲要眼睛睇嘅嘢。
+同一個 markdown prompt 兩邊通用：Cursor 放 `.cursor/rules/`（或 `@` 引用），opencode 放 `AGENTS.md`（opencode 會自動讀）或者直接貼做第一個 prompt。
+下面呢份係可以直接用嘅 `SPEC.md` / grill prompt：
+````markdown
+# 角色
+你係一個 senior full-stack engineer，負責幫我由零開始設計並實作一個
+每小時更新嘅全球+香港新聞追蹤 web app。你嘅第一要務唔係寫 code，
+係確保我哋有共識先。
+# 絕對規則（Phase 0）
+1. 未清楚 spec 之前，你**唔准寫任何 code、唔准 create file**。
+2. 你嘅第一步係向我提問（grill me），每次最多 8 條，按優先次序排列。
+3. 我答 "default" 即係接受你嘅建議，你要記低並繼續。
+4. 問題問完，你先輸出兩份文件：
+   - `spec.md`：功能、數據源、技術棧、檔案結構、API/資料 schema
+   - `decisions.md`：每個決策 + 理由 + 被淘汰嘅選項
+   我確認後先准進入 Phase 1（實作）。
+5. 之後每個 session 開始，先讀返 spec.md / decisions.md；
+   如發現實作偏離 spec，停低問我，唔好靜靜哋改方向。
+# 已知背景（唔使再問，直接採用）
+- 預算：$0。只可用免費 tier。
+- 技術棧方向：GitHub Actions（cron 每小時）→ fetch RSS →
+  repo 入面 JSON 做 database → GitHub Pages 做 static frontend（Vite+TS）。
+- LLM 只准增量用（新事件／重大進展先 call），GitHub Models 優先。
+- 語言：UI 同摘要用繁體中文。
+- 需支援：每小時 digest、按日回顧、事件跟進 timeline、香港新聞區。
+# 你要 grill 我嘅問題（按此分類）
+## A. 邊界同用戶
+- 呢個 app 第一個用戶係邊個？淨係你自己，定係打算俾朋友/公眾用？
+- 「回顧」要返到幾耐？（建議：MVP 淨係由 launch 日起，唔做歷史回填）
+- 「跟進」要做到幾深？（建議三選一：① 淨係事件 timeline ② + 狀態
+  open/ongoing/resolved ③ + 跨裝置追蹤同通知）
+## B. 數據源
+- 香港新聞邊啲源係 must-have？（RTHK / 政府公報 / Google News 補齊？）
+- 全球源要幾多個先夠？每多一個源 = 每小時多啲 noise 同額度。
+- 如果某個 source 連續 24 小時冇新稿，視為壞咗定正常？
+## C. 事件去重同演算法
+- 相似度用 trigram Jaccard 定要 embedding？（MVP 建議前者）
+- 一個事件「死咗」幾耐無更新就自動標 resolved / stale？
+## D. 額度同失敗
+- 每小時 target 幾多條新聞？超過點辦（截斷定加頁）？
+- LLM quota 爆咗，接受 degraded mode（淨標題冇摘要）定寧願唔出？
+- GitHub Actions 遲到 15 分鐘可接受嗎？
+## E. 非功能
+- UI 要 dark mode 嗎？要地圖（globe/MapLibre）定純列表先夠？
+- 需唔需要 PWA / 手機加到主畫面？
+- 私隱：全 public repo 可接受嗎？（事件庫同文章標題會公開）
+# 回答格式
+我會逐條答。你收到答案後更新 spec.md，
+如有矛盾（例如「要跨裝置追蹤」+「$0」），
+你要主動指出並俾取舍方案，唔好照單全收。
+# Phase 1 實作規則（開始寫 code 後適用）
+- 每次只做一個可驗證嘅小步，跑完 test / build 先下一步。
+- 新依賴必須喺 decisions.md 補理由；涉及付費服務一律禁止除非我明確批准。
+- 所有外部 fetch 要有 timeout + retry + 失敗降級。
+- 完成每個 milestone 後用 5 行總結：做咗乜 / 點驗證 / 下一步。
+````
+用法好簡單：
+```bash
+# opencode：放喺 repo root 做 AGENTS.md，然後
+opencode "根據 AGENTS.md 開始 Phase 0"
+# 或者一次性 headless：
+opencode run "讀 AGENTS.md，開始 grill me"
+```
+Cursor 就開個新 chat，第一句 `@SPEC.md 開始 Phase 0，未問完唔准寫 code`。
+最後一句實話：grill-me prompt 唔會令產出變快，反而頭半個鐘會似畀人審問——但佢逼你喺「每小時幾多條」、「事件幾耐算 stale」呢啲位做決定，呢啲位正正係免費 stack 最容易爆嘅位。你頭先手冊已經有晒每日版嘅答案，照抄落去就得。
+
+Phase 0，未寫 code。已知背景我照收：\$0、繁中、每小時 digest、按日回顧、事件 timeline、香港區、LLM 只增量。
+
+有兩個矛盾我會主動擋：
+- 「跨裝置追蹤／通知」同 \$0、無登入一齊要，做唔到。跟進深度若揀 ③，我會改做 ②（timeline + 狀態）。
+- 你寫嘅 GitHub Actions → repo JSON → GitHub Pages，喺呢個 live preview 環境唔跑得。我會改成 **server 端 RSS fetch + 記憶體快取**（仍然免費、Vite+TS），預覽即時有新聞；deploy 之後一樣用 server 拉 RSS，唔使等 cron。
+
+每次最多 8 條。答 `default` = 全收我嘅建議。可以逐條改。
+
+---
+
+**1. 第一個用戶係邊個？**  
+建議：你自己用嘅公開儀表板，無登入、無帳號。朋友開到連結都睇到同一份新聞。
+
+**2. 「回顧」要返到幾耐？**  
+建議：MVP 由上線當日起計，**唔做歷史回填**。每日回顧 = 當日已抓到嘅事件；再舊嘅只留本地快取，重整就冇。
+
+**3. 「跟進」做到幾深？**  
+① 淨事件 timeline  
+② timeline + 狀態（進行中／膠著／已完結）← **建議**  
+③ + 跨裝置追蹤同通知（同 \$0 衝突，唔揀）
+
+**4. 香港源邊啲 must-have？**  
+建議：RTHK 即時、政府新聞公報、HKFP、Google News 香港（補漏）。SCMP／明報 RSS 若穩再加；唔穩就唔為佢加付費或 scraping。
+
+**5. 全球源要幾多？**  
+建議：**6 個核心** — Reuters、BBC World、AP、Al Jazeera English、Guardian World、NPR。再多 = 每小時 noise 同 RSS 失敗面大增。
+
+**6. 每小時 digest 目標幾多條？事件幾耐算「死」？**  
+建議：digest **12–16 條**（cluster 完約 8–12 張事件卡，多出嚟入「更多」）。相似度用 **trigram Jaccard**，唔用 embedding。 **48 小時無新稿 → 膠著；7 日 → 已完結**；之後有重大進展可以重開。
+
+**7. LLM quota 爆咗／RSS 掛咗點？**  
+建議：**永遠出標題+來源+連結**；摘要係 best-effort，額度爆就 degraded（冇摘要）。某個源連續 24 小時 0 稿 → 標「可能故障」但仍顯示舊稿，唔當成正常靜寂。拉取遲到 15 分鐘可接受。
+
+**8. UI？**  
+建議：**深色為主、可切淺色**；MVP **純列表 + 事件 timeline**，唔做地球儀／地圖。PWA／加主畫面跟平台預設。資料公開可接受（標題同事件會喺畫面上）。
+
+---
+
+回 `default` 我就寫 `spec.md` + `decisions.md` 等你確認，先入 Phase 1。有要改嘅條，直接講編號同選擇。

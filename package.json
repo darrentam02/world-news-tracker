@@ -1,0 +1,14 @@
+{
+  "name": "world-news-tracker",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "pnpm --filter @world-news/app build",
+    "dev": "pnpm --filter @world-news/app dev"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.6.0"
+  }
+}
