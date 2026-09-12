@@ -5,10 +5,13 @@
 import "dotenv/config";
 import { XMLParser } from "fast-xml-parser";
 import { createHash } from "node:crypto";
+import { createClient } from "@supabase/supabase-js";
 import { FEEDS, type FeedSource } from "../config/feeds";
 import { isBlacklisted } from "../config/blacklist";
 import { runClustering } from "./cluster";
 import { fetchAndStoreQuotes } from "./fetch-quotes";
+import { reconcileBlacklist } from "./reconcile-blacklist";
+import { logAudit, loadBlacklistAuditIds } from "./audit";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -27,6 +30,12 @@ interface RawItem {
 
 function sha256(s: string): string {
   return createHash("sha256").update(s).digest("hex");
+}
+
+let sbCache: any = null;
+function getSb(): any {
+  if (SUPABASE_URL && SUPABASE_KEY) sbCache ??= createClient(SUPABASE_URL, SUPABASE_KEY);
+  return sbCache;
 }
 
 function normalizeUrl(u: string): string {
@@ -95,7 +104,7 @@ async function fetchFeed(feed: FeedSource): Promise<{ ok: boolean; count: number
   try {
     const xml = await fetchXml(feed.url);
     const items = parseItems(xml).slice(0, MAX_ITEMS_PER_FEED);
-    const articles = items
+    const candidate = items
       .map((i) => {
         const url = extractLink(i);
         if (!url) return null;
@@ -110,8 +119,30 @@ async function fetchFeed(feed: FeedSource): Promise<{ ok: boolean; count: number
           raw_hash: rawHash,
         };
       })
-      .filter((a) => a !== null)
-      .filter((a) => !isBlacklisted(a!.title, a!.url));
+      .filter((a) => a !== null);
+
+    // M7：命中 blacklist → 唔入庫 + audit_log 記「blacklist」（target_id = raw_hash，去重防每小時 spam）
+    const blocked = candidate.filter((a) => isBlacklisted(a!.title, a!.url));
+    const articles = candidate.filter((a) => !isBlacklisted(a!.title, a!.url));
+
+    const sb = getSb();
+    if (sb && blocked.length) {
+      const logged = blockedLoggedIds ?? (blockedLoggedIds = await loadBlacklistAuditIds());
+      const fresh = blocked.filter((a) => !logged.has(a!.raw_hash));
+      if (fresh.length) {
+        await logAudit(
+          fresh.map((a) => ({
+            actor: "fetch-hourly",
+            action: "blacklist" as const,
+            target_type: "article" as const,
+            target_id: a!.raw_hash,
+            detail: { source: feed.id, title: a!.title, url: a!.url },
+          })),
+          sb,
+        );
+        fresh.forEach((a) => logged.add(a!.raw_hash));
+      }
+    }
 
     await saveArticles(feed, articles);
     return { ok: true, count: articles.length };
@@ -121,6 +152,8 @@ async function fetchFeed(feed: FeedSource): Promise<{ ok: boolean; count: number
     return { ok: false, count: 0, error: msg };
   }
 }
+
+let blockedLoggedIds: Set<string> | null = null;
 
 // 依 spec：降級=單一 feed 失敗唔影響其他；連續 24h 0 新文章 → flag（M7 audit 再加，先留位）
 async function logDegrade(feed: FeedSource, msg: string): Promise<void> {
@@ -144,15 +177,14 @@ async function saveArticles(feed: FeedSource, articles: ArticleRow[]): Promise<v
     if (articles.length > 3) console.log(`   ... +${articles.length - 3} more`);
     return;
   }
-  const { createClient } = await import("@supabase/supabase-js");
-  const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+  const sb = getSb();
   if (!articles.length) return;
 
   // raw_hash 只係普通 index（spec 冇要求 unique）——兩步去重：先揀已存在，再淨插入新
   const hashes = articles.map((a) => a.raw_hash);
   const { data, error } = await sb.from("articles").select("raw_hash").in("raw_hash", hashes);
   if (error) throw new Error(`dedupe-query: ${error.message}`);
-  const existing = new Set((data ?? []).map((r) => r.raw_hash as string));
+  const existing = new Set((data ?? []).map((r: { raw_hash: string }) => r.raw_hash));
   const toInsert = articles.filter((a) => !existing.has(a.raw_hash));
   if (toInsert.length) {
     const { error: insErr } = await sb.from("articles").insert(toInsert);
@@ -162,6 +194,14 @@ async function saveArticles(feed: FeedSource, articles: ArticleRow[]): Promise<v
 
 async function main(): Promise<void> {
   const t0 = Date.now();
+
+  // M7：blacklist 更新即生效 —— 每次開始先下架已命中嘅存量稿/事件，再繼續新抓取
+  try {
+    if (SUPABASE_URL) await reconcileBlacklist();
+  } catch (e) {
+    console.warn(`[degrade] reconcile-blacklist: ${(e as Error).message}`);
+  }
+
   const results = await Promise.all(
     FEEDS.map(async (feed) => ({ feed, result: await fetchFeed(feed) })),
   );

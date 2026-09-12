@@ -7,6 +7,7 @@ import cors from "cors";
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, publicBaseUrl } from "../../scripts/email";
 import { sendDigest } from "../../scripts/send-digest";
+import { privacyPageHtml } from "./privacy";
 
 dotenv.config({ path: fileURLToPath(new URL("../../.env", import.meta.url)) });
 import {
@@ -38,6 +39,10 @@ app.use(express.json());
 
 app.get("/api/healthz", (_req, res) => {
   res.status(200).json({ status: "ok", time: new Date().toISOString() });
+});
+
+app.get("/privacy", (_req, res) => {
+  res.status(200).type("html").send(privacyPageHtml());
 });
 
 const REGIONS: Region[] = ["world", "hk", "markets"];

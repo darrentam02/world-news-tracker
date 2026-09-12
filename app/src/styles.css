@@ -383,3 +383,14 @@ a {
 .bad {
   color: #f87171;
 }
+
+.foot {
+  margin-top: 28px;
+  padding-top: 14px;
+  border-top: 1px solid #22313f;
+  font-size: 13px;
+}
+
+.foot a {
+  color: #88b8ff;
+}

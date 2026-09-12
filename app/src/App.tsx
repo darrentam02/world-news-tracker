@@ -75,6 +75,9 @@ export default function App() {
               ))}
             </section>
           )}
+          <footer className="foot">
+            <a href="/privacy">隱私政策</a>
+          </footer>
         </>
       )}
     </main>

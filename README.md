@@ -1,6 +1,6 @@
 # World News Tracker
 
-每小時全球 + 香港 + 巿場新聞 app。Phase 1 中 —— M1–M6 done。
+每小時全球 + 香港 + 巿場新聞 app。Phase 1 done —— M1–M7 all ✅。
 
 詳細 spec + decisions：見 `spec.md` / `decisions.md`(source of truth)。
 
@@ -34,7 +34,7 @@ scripts/               # fetch-hourly / cluster / fetch-quotes / send-digest / c
 - [x] M4 news API + frontend
 - [x] M5 market quote
 - [x] M6 subscribe/digest
-- [ ] M7 privacy / blacklist / audit
+- [x] M7 privacy / blacklist / audit（黑名單更新即生效，下架逐次入 audit_log）
 
 ## 私隱
 

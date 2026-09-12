@@ -12,6 +12,7 @@ import { chooseEvent, clusterHash, eventStatus } from "../shared/src/dedup";
 import type { ClusteredStatus } from "../shared/src/dedup";
 import { FEEDS } from "../shared/src/feeds";
 import type { Region } from "../shared/src/types";
+import { logAudit } from "./audit";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -33,6 +34,7 @@ interface EventRow {
   title: string;
   last_seen_at: string;
   region: Region;
+  status: ClusteredStatus;
 }
 interface ArticleRow {
   id: string;
@@ -43,7 +45,7 @@ interface ArticleRow {
 }
 
 async function loadEvents(): Promise<EventRow[]> {
-  const { data, error } = await sb.from("events").select("id,title,last_seen_at,region");
+  const { data, error } = await sb.from("events").select("id,title,last_seen_at,region,status");
   if (error) throw new Error(`load events: ${error.message}`);
   return (data ?? []) as unknown as EventRow[];
 }
@@ -72,15 +74,36 @@ async function assign(eventId: string, articleIds: string[]): Promise<void> {
 
 async function statusSweep(): Promise<void> {
   const rows = await loadEvents();
+  // M7：只更新「真係有變」嘅 event，並寫 audit_log（edit_history provenance）
+  const changed: Array<{ id: string; from: ClusteredStatus; to: ClusteredStatus }> = [];
+  for (const r of rows) {
+    const next = eventStatus(r.last_seen_at);
+    if (next !== r.status) changed.push({ id: r.id, from: r.status, to: next });
+  }
   const by: Record<ClusteredStatus, string[]> = { open: [], stale: [], resolved: [] };
-  for (const r of rows) by[eventStatus(r.last_seen_at)].push(r.id);
+  for (const c of changed) by[c.to].push(c.id);
   for (const status of Object.keys(by) as ClusteredStatus[]) {
     const ids = by[status];
     if (!ids.length) continue;
     const { error } = await sb.from("events").update({ status }).in("id", ids);
     if (error) throw new Error(`status sweep ${status}: ${error.message}`);
   }
-  console.log(`status sweep：open ${by.open.length} / stale ${by.stale.length} / resolved ${by.resolved.length}`);
+  if (changed.length) {
+    await logAudit(
+      changed.map((c) => ({
+        actor: "cluster",
+        action: "status_change" as const,
+        target_type: "event" as const,
+        target_id: c.id,
+        detail: { from: c.from, to: c.to },
+      })),
+      sb,
+    );
+  }
+  const open = rows.filter((r) => eventStatus(r.last_seen_at) === "open").length;
+  const stale = rows.filter((r) => eventStatus(r.last_seen_at) === "stale").length;
+  const resolved = rows.filter((r) => eventStatus(r.last_seen_at) === "resolved").length;
+  console.log(`status sweep：open ${open} / stale ${stale} / resolved ${resolved}（變動 ${changed.length}）`);
 }
 
 export async function runClustering(): Promise<void> {

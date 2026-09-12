@@ -174,12 +174,12 @@ function buildDigest(opts: {
     ${worldCards.html}
     ${hkEvents.length ? `<h2 style="font-size:16px;margin:28px 0 4px">香港新聞區</h2>${hkCards.html}` : ""}
     <div style="margin-top:26px;padding-top:14px;border-top:1px solid #eee;font-size:12px;color:#888">
-      唔想再收到？<a href="${unsubUrl}" style="color:#0f6bb5">一鍵取消訂閱</a><br/>
+      唔想再收到？<a href="${unsubUrl}" style="color:#0f6bb5">一鍵取消訂閱</a> ・ <a href="${base}/privacy" style="color:#0f6bb5">隱私政策</a><br/>
       World News Tracker ・ 白名單源自動摘要，非投資建議
     </div>
   </div></div>`;
 
-  const text = `World News Tracker — ${slot === "a" ? "開巿簡報" : "收巿簡報"}\n\n【巿場卡】\n${marketRows(opts.quotes, slot)}\n\n【全球新聞】\n${worldCards.text}\n${hkEvents.length ? `\n【香港新聞區】\n${hkCards.text}\n` : ""}\n唔想再收到？${unsubUrl}`;
+  const text = `World News Tracker — ${slot === "a" ? "開巿簡報" : "收巿簡報"}\n\n【巿場卡】\n${marketRows(opts.quotes, slot)}\n\n【全球新聞】\n${worldCards.text}\n${hkEvents.length ? `\n【香港新聞區】\n${hkCards.text}\n` : ""}\n唔想再收到？${unsubUrl}\n隱私政策：${base}/privacy`;
 
   return { html, text, subject: SUBJECTS[slot] };
 }
