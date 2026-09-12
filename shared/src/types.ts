@@ -1,3 +1,5 @@
+import type { MarketGroup } from "./market";
+
 export type EventStatus = "open" | "stale" | "resolved";
 export type Region = "world" | "hk" | "markets";
 export type SubscriberStatus = "pending" | "active" | "unsubscribed";
@@ -38,4 +40,55 @@ export interface Subscriber {
 export interface Healthz {
   status: string;
   time: string;
+}
+
+export interface NewsArticleLight {
+  id: string;
+  source: string;
+  title: string;
+  url: string;
+  fetched_at: string;
+}
+
+export interface EventDetail {
+  id: string;
+  title: string;
+  summary: string | null;
+  status: EventStatus;
+  region: Region;
+  pinned: boolean;
+  first_seen_at: string;
+  last_seen_at: string;
+  source_url: string | null;
+}
+
+export interface NewsEventCard extends EventDetail {
+  article_count: number;
+  latest: NewsArticleLight[];
+}
+
+export interface NewsResponse {
+  region: Region | "all";
+  events: NewsEventCard[];
+}
+
+export interface EventTimelineResponse {
+  event: EventDetail;
+  timeline: NewsArticleLight[];
+}
+
+export interface MarketIndexInfo {
+  symbol: string;
+  name: string;
+  group: MarketGroup;
+}
+
+export interface MarketGroupPayload {
+  group: MarketGroup;
+  label: string;
+  indices: MarketIndexInfo[];
+}
+
+export interface MarketResponse {
+  groups: MarketGroupPayload[];
 }
