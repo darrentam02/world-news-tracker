@@ -38,6 +38,10 @@ const sb = SUPABASE_URL && SUPABASE_KEY ? createClient(SUPABASE_URL, SUPABASE_KE
 
 app.use(cors());
 app.use(express.json());
+app.use("/api", (_req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+  next();
+});
 
 app.get("/api/healthz", (_req, res) => {
   res.status(200).json({ status: "ok", time: new Date().toISOString() });

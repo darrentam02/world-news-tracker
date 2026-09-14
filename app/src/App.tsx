@@ -16,19 +16,38 @@ export default function App() {
   const [selected, setSelected] = useState<EventTimelineResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
-  useEffect(() => {
-    fetchMarket().then(setMarket).catch(() => setMarket(null));
-  }, []);
-
-  useEffect(() => {
-    setLoading(true);
+  const refreshDashboard = useCallback(async (showLoading: boolean) => {
+    if (showLoading) setLoading(true);
     setError(null);
-    fetchNews(region)
-      .then(setNews)
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
+    try {
+      const [nextNews, nextMarket] = await Promise.all([
+        fetchNews(region),
+        fetchMarket(),
+      ]);
+      setNews(nextNews);
+      setMarket(nextMarket);
+      setUpdatedAt(new Date());
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      if (showLoading) setLoading(false);
+    }
   }, [region]);
+
+  useEffect(() => {
+    void refreshDashboard(true);
+    const interval = window.setInterval(() => void refreshDashboard(false), 5 * 60 * 1000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refreshDashboard(false);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [refreshDashboard]);
 
   const openEvent = useCallback((id: string) => {
     fetchEvent(id)
@@ -43,6 +62,7 @@ export default function App() {
       <header className="head">
         <h1>World News Tracker</h1>
         <p className="tagline">每小時全球 + 香港 + 巿場新聞</p>
+        {updatedAt && <p className="updated">最後更新：{updatedAt.toLocaleTimeString("zh-HK", { hour: "2-digit", minute: "2-digit" })}</p>}
       </header>
 
       <SubscribeBox />

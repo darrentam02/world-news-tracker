@@ -12,7 +12,7 @@ export interface SubscribeResult {
 }
 
 async function get<T>(url: string): Promise<T> {
-  const res = await fetch(url);
+  const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     try {
